@@ -16,6 +16,8 @@
 #include <cmath>
 
 #define MAXTIMINGS 85
+
+// gpio pin - 'gpio readall' prints a table of pins
 #define DHTPIN 7
 
 // w1 ID - 10 is considered the max usable count
@@ -84,7 +86,7 @@ std::string read_dht11()
     //check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
     if ( ( j >= 40 ) && ( dht11_dat[4] == ( ( dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3] ) & 0xFF ) ) )
     {
-	snprintf( retstr, sizeof( retstr ), "%d.%d %% %d.%d *C", dht11_dat[0], dht11_dat[1], dht11_dat[2], dht11_dat[3] );
+	snprintf( retstr, sizeof( retstr ), "%d.%d %d.%d", dht11_dat[0], dht11_dat[1], dht11_dat[2], dht11_dat[3] );
 	return( retstr );
     } else  {
 	//std::cout << " Fail! Output is " << dht11_dat[0] << " " << dht11_dat[1]<< " " << dht11_dat[2]<< " " << dht11_dat[3] << " !" << std::endl;
@@ -139,7 +141,7 @@ std::string read_w1()
 	// 2 digit precision
 	double f = pow( 10, 2 );
 	ss << ( ( ( int ) ( thetemp[i] / 1000.0*f ) ) /f );
-	retstr = retstr + ss.str() + " *C ";
+	retstr = retstr + ss.str();
     }
     return( retstr );
 }
@@ -160,7 +162,8 @@ int main( int argc, char** argv )
         exit( 1 );
     }
 
-    std::ofstream myfile (filename.c_str());
+    std::ofstream myfile;
+    myfile.open( filename.c_str(), std::ios_base::app );
     if( !myfile.is_open() )
     {
 	std::cout << "Error in opening output file!" << std::endl;
@@ -208,20 +211,12 @@ int main( int argc, char** argv )
 	std::string mydht11 = read_dht11();
 	std::string myw1 = read_w1();
 
-	int dhtfail = 0;
-	while ( mydht11 == "X" )
+	if ( mydht11 != "X" && myw1 != "X" )
 	{
-	    mydht11 = read_dht11();
-	    dhtfail++;
-	    sleep( dhtfail );
-	    if ( dhtfail > 10 )
-	    {
-		mydht11 = " ";
-	    }
+	    std::cout << thetime << " " << mydht11 << " " << myw1 << std::endl;
+	    myfile << thetime << " " << mydht11 << " " << myw1 << "\n";
+	    myfile.flush();
 	}
-	std::cout << thetime << " " << mydht11 << " " << myw1 << std::endl;
-	myfile << thetime << " " << mydht11 << " " << myw1 << "\n";
-	myfile.flush();
 
 	sleep( delayrate );
     }

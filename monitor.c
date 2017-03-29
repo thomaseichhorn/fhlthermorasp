@@ -1,3 +1,6 @@
+// compile with:
+// g++ monitor.cc -o monitor -L/usr/local/lib -lwiringPi
+
 #include <stdio.h>
 #include <iostream>
 #include <fstream>

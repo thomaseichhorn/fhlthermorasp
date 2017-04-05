@@ -20,9 +20,6 @@
 
 #define MAXTIMINGS 85
 
-// gpio pin - 'gpio readall' prints a table of pins
-#define DHTPIN 7
-
 // w1 ID - 10 is considered the max usable count
 char dev[20][16];
 
@@ -33,7 +30,7 @@ char path[] = "/sys/bus/w1/devices";
 int w1count = 0;
 
 // read a dht11
-std::string read_dht11()
+std::string read_dht11(int DHTPIN)
 {
     int dht11_dat[5] = { 0 };
     uint8_t laststate = HIGH;
@@ -89,7 +86,7 @@ std::string read_dht11()
     //check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
     if ( ( j >= 40 ) && ( dht11_dat[4] == ( ( dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3] ) & 0xFF ) ) )
     {
-	snprintf( retstr, sizeof( retstr ), "%d.%d %d.%d", dht11_dat[0], dht11_dat[1], dht11_dat[2], dht11_dat[3] );
+	snprintf( retstr, sizeof( retstr ), "%d.%02d %d.%02d", dht11_dat[0], dht11_dat[1], dht11_dat[2], dht11_dat[3] );
 	return( retstr );
     } else  {
 	//std::cout << " Fail! Output is " << dht11_dat[0] << " " << dht11_dat[1]<< " " << dht11_dat[2]<< " " << dht11_dat[3] << " !" << std::endl;
@@ -113,7 +110,7 @@ std::string gettime()
 std::string read_w1()
 {
     double thetemp[20] = { 0.0 };
-    std::string retstr;
+    std::string retstr = "";
     for (int i=0; i<w1count; i++)
     {
 	// Path to device
@@ -139,12 +136,9 @@ std::string read_w1()
 	    thetemp[i] = strtof( tmpData, NULL );
 	}
 	close( fd );
-	std::ostringstream ss;
-
-	// 2 digit precision
-	double f = pow( 10, 2 );
-	ss << ( ( ( int ) ( thetemp[i] / 1000.0*f ) ) /f );
-	retstr = retstr + ss.str();
+	char tempstr[320];
+	snprintf( tempstr, sizeof( tempstr ), "%4.2f", thetemp[i] / 1000.0 );
+	retstr = retstr + tempstr + " ";
     }
     return( retstr );
 }
@@ -179,6 +173,36 @@ int main( int argc, char** argv )
 	exit( 1 );
     }
 
+    /*
+    // gpio pin - 'gpio readall' prints a table of pins
+    // set dht11 count
+    int ndht11 = 0;
+    int dhtadd[30] = { 0 };
+    std::cout << "Probing DHT11s..." << std::endl;
+    sleep( 10 );
+    for ( int i=0; i<30; i++ )
+    {
+	std::string tempstr = "";
+	tempstr = read_dht11( i );
+	if ( tempstr != "X" )
+	{
+	    std::cout << "Found DHT11 no. " << ndht11 << " at GPIO pin " << i << "!" << std::endl;
+	    dhtadd[ ndht11 ] = i;
+	    ndht11++;
+	} else {
+	    std::cout << "Didn't find sth at " << i << std::endl;
+	}
+	sleep(10);
+    }
+    */
+    
+    int dhtadd[30] = { 0 };
+    int ndht11 = 4;
+    dhtadd[0] = 0;
+    dhtadd[1] = 1;
+    dhtadd[2] = 2;
+    dhtadd[3] = 3;
+
     // get the w1 devices
     DIR *dir;
     struct dirent *dirent;
@@ -211,14 +235,24 @@ int main( int argc, char** argv )
     while ( 1 )
     {
 	std::string thetime = gettime();
-	std::string mydht11 = read_dht11();
+	std::string mydht11 = "";
+	for ( int i = 0; i < ndht11; i++ )
+	{
+	    mydht11 += read_dht11( dhtadd[i] ) + " ";
+	}
+
 	std::string myw1 = read_w1();
 
-	if ( mydht11 != "X" && myw1 != "X" )
+	std::size_t found = mydht11.find( "X" );
+	if ( found != std::string::npos )
 	{
-	    std::cout << thetime << " " << mydht11 << " " << myw1 << std::endl;
-	    myfile << thetime << " " << mydht11 << " " << myw1 << "\n";
+	    //std::cout << "fail " << std::endl;
+	    delayrate++;
+	} else {
+	    std::cout << thetime << " " << mydht11 << myw1 << std::endl;
+	    myfile << thetime << " " << mydht11 << myw1 << "\n";
 	    myfile.flush();
+	    delayrate = 1;
 	}
 
 	sleep( delayrate );

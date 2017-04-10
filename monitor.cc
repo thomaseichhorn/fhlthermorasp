@@ -150,6 +150,51 @@ int main ( int argc, char** argv )
 
     std::string filename = "";
     std::stringstream astream;
+    /*
+    
+    int aflag = 0;
+  int bflag = 0;
+  char *cvalue = NULL;
+  int index;
+  int c;
+
+  opterr = 0;
+    
+      while ((c = getopt (argc, argv, "abc:")) != -1)
+    switch (c)
+      {
+      case 'w1':
+        w1on = true;
+        break;
+      case 'b':
+        bflag = 1;
+        break;
+      case 'c':
+        cvalue = optarg;
+        break;
+      case '?':
+        if (optopt == 'c')
+          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+        else if (isprint (optopt))
+          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+        else
+          fprintf (stderr,
+                   "Unknown option character `\\x%x'.\n",
+                   optopt);
+        return 1;
+      default:
+        abort ();
+      }
+    
+      printf ("aflag = %d, bflag = %d, cvalue = %s\n",
+          aflag, bflag, cvalue);
+
+  for (index = optind; index < argc; index++)
+    printf ("Non-option argument %s\n", argv[index]);
+    
+    */
+    
+    
     if ( argc>1 )
     {
 	astream << argv[1];
@@ -224,8 +269,8 @@ int main ( int argc, char** argv )
     */
     
     int dhtadd[30] = { 0 };
-    int ndht11 = 4;
-    dhtadd[0] = 0;
+    int ndht11 = 1;
+    dhtadd[0] = 7;
     dhtadd[1] = 1;
     dhtadd[2] = 2;
     dhtadd[3] = 3;

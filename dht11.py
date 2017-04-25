@@ -1,6 +1,7 @@
 import time
 import RPi
 import RPi.GPIO as GPIO
+from collections import namedtuple
 
 class DHT11Result:
 	'DHT11 sensor result returned by DHT11.read() method'
@@ -19,12 +20,12 @@ class DHT11Result:
 		self.temperature = temperature
 		self.humidity = humidity
 		self.is_valid = self.error_code == DHT11Result.ERR_NO_ERROR
+		
+DHT11Result = namedtuple("DHT11Result", ("sensor_name", "is_valid", "temp", "hum"))
 
 
 class DHT11:
 	'DHT11 sensor reader class for Raspberry'
-
-	__pin = 0
 
 	def __init__(self, pin):
 		self.__pin = pin
@@ -52,7 +53,8 @@ class DHT11:
 
 		# if bit count mismatch, return error (4 byte data + 1 byte checksum)
 		if len(pull_up_lengths) != 40:
-			return DHT11Result(DHT11Result.ERR_MISSING_DATA, self.get_sensor_name(), 0, 0)
+			#return DHT11Result(DHT11Result.ERR_MISSING_DATA, self.get_sensor_name(), 0, 0)
+			return DHT11Result(False, self.get_sensor_name(), 0, 0)
 
 		# calculate bits from lengths of the pull up periods
 		bits = self.__calculate_bits(pull_up_lengths)
@@ -63,10 +65,11 @@ class DHT11:
 		# calculate checksum and check
 		checksum = self.__calculate_checksum(the_bytes)
 		if the_bytes[4] != checksum:
-			return DHT11Result(DHT11Result.ERR_CRC, self.get_sensor_name(), 0, 0)
+			#return DHT11Result(DHT11Result.ERR_CRC, self.get_sensor_name(), 0, 0)
+			return DHT11Result(False, self.get_sensor_name(), 0, 0)
 
 		# ok, we have valid data, return it
-		return DHT11Result(DHT11Result.ERR_NO_ERROR, self.get_sensor_name(), the_bytes[2], the_bytes[0])
+		return DHT11Result(True, self.get_sensor_name(), the_bytes[2], the_bytes[0])
 
 	def __send_and_sleep(self, output, sleep):
 		RPi.GPIO.output(self.__pin, output)
@@ -181,11 +184,14 @@ class DHT11:
 		
 	def get_sensor_name(self):
 		return "DHT11_PIN%i" % self.__pin
+		
+	def get_sensor_fields(self):
+		return ["temp", "hum"]
 
-def get_sensor_clas():
-	return DHT11
+def get_sensors(pin):
+	return [DHT11(pin)]
 
 if __name__ == "__main__":
-	sensor = DHT11(pin = 4)
+	sensor = DHT11(pin = 17)
 	result = sensor.read()
-	print("valid:%r temperature:%i huminidty:%i" % (result.is_valid, result.temperature, result.humidity))
+	print("valid:%r temperature:%i huminidty:%i" % (result.is_valid, result.temp, result.hum))

@@ -1,22 +1,24 @@
 // compile with:
 // g++ monitor.cc -o monitor -L/usr/local/lib -lwiringPi
 
-#include <stdio.h>
-#include <iostream>
+#include <cmath>
+#include <cstring>
+#include <dirent.h>
+#include <fcntl.h>
 #include <fstream>
 #include <iomanip>
-#include <dirent.h>
-#include <string.h>
-#include <fcntl.h>
+#include <iostream>
+#include <linux/i2c-dev.h>
+#include <sstream>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string>
+#include <sys/ioctl.h>
+#include <time.h>
 #include <unistd.h>
 #include <vector>
-#include <string>
-#include <time.h>
 #include <wiringPi.h>
-#include <stdint.h>
-#include <sstream>
-#include <cmath>
 
 #define MAXTIMINGS 85
 
@@ -26,10 +28,22 @@ char dev[20][16];
 // w1 path
 char path[] = "/sys/bus/w1/devices";
 
-// count on found w1 devices
+// found devices
 int w1count = 0;
 
-// read a dht11 sensor
+// returns the current time in a formatted string
+std::string gettime ( )
+{
+    time_t rawtime;
+    struct tm * timeinfo;
+    time ( &rawtime );
+    timeinfo = localtime ( &rawtime );
+    char timebuffer [90];
+    strftime ( timebuffer, 80, "%Y-%m-%d %H:%M:%S", timeinfo );
+    return ( timebuffer );
+}
+
+// read a dht11
 std::string read_dht11 ( int DHTPIN )
 {
     int dht11_dat[5] = { 0 };
@@ -83,7 +97,7 @@ std::string read_dht11 ( int DHTPIN )
     }
 
     char retstr[32];
-    //check we read 40 bits (8bit x 5 ) + verify checksum in the last byte
+    // check that we read 40 bits ( 8bit x 5 ) and verify checksum in the last byte
     if ( ( j >= 40 ) && ( dht11_dat[4] == ( ( dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3] ) & 0xFF ) ) )
     {
 	snprintf ( retstr, sizeof ( retstr ), "%d.%02d %d.%02d", dht11_dat[0], dht11_dat[1], dht11_dat[2], dht11_dat[3] );
@@ -96,20 +110,6 @@ std::string read_dht11 ( int DHTPIN )
     }
 }
 
-
-// returns the current time in a formatted string
-std::string gettime ( )
-{
-    time_t rawtime;
-    struct tm * timeinfo;
-    time ( &rawtime );
-    timeinfo = localtime ( &rawtime );
-    char timebuffer [90];
-    strftime ( timebuffer, 80, "%Y-%m-%d %H:%M:%S", timeinfo );
-    return ( timebuffer );
-}
-
-
 // reads 1-Wire sensors
 std::string read_w1 ( )
 {
@@ -117,13 +117,13 @@ std::string read_w1 ( )
     std::string retstr = "";
     for ( int i=0; i<w1count; i++ )
     {
-	// Path to device
+	// path to device
 	char devPath[128];
 
-	// Data from device
+	// data from device
 	char buf[256];
 
-	// Temp C * 1000 reported by device 
+	// temperature in degrees C * 1000 reported by device 
 	char tmpData[6];
 
 	ssize_t numRead;
@@ -147,6 +147,73 @@ std::string read_w1 ( )
     return ( retstr );
 }
 
+// reads i2c sht11 or si7021 sensors
+std::string read_sht11 ( )
+{
+    std::string retstr = "";
+
+    // create the I2C bus
+    int file;
+    const char *bus = "/dev/i2c-1";
+    if ( ( file = open ( bus, O_RDWR ) ) < 0 ) 
+    {
+	//std::cout << "Fail! Could not open I2C-Bus!" << std::endl;
+	return ( "X" );
+    }
+
+    // get i2c device, sht11 and si7021 i2c addresses are 0x40(64)
+    ioctl ( file, I2C_SLAVE, 0x40 );
+
+    // the command to send
+    char config[1];
+
+    // the data to read
+    char data[2] = {0};
+
+    // send humidity measurement command 0xF5
+    config[0] = 0xF5;
+    write ( file, config, 1 );
+    sleep ( 1 );
+
+    // read 2 bytes of humidity data: humidity msb, humidity lsb
+    if ( read ( file, data, 2 ) != 2 )
+    {
+	//std::cout << "Fail! Error in reading SHT11 humidity!" << std::endl;
+	return ( "X" );
+    }
+    else
+    {
+	// data conversion
+	float humidity = ( ( ( data[0] * 256 + data[1] ) * 125.0 ) / 65536.0 ) - 6;
+	char tempstr[320];
+	snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", humidity );
+	retstr = retstr + tempstr + " ";
+    }
+
+    // send temperature measurement command 0xF3
+    config[0] = 0xF3;
+    write ( file, config, 1 ); 
+    sleep ( 1 );
+
+    // read 2 bytes of temperature data: temperature msb, temperature lsb
+    if ( read ( file, data, 2 ) != 2 )
+    {
+	//std::cout << "Fail! Error in reading SHT11 temperature!" << std::endl;
+	return ( "X" );
+    }
+    else
+    {
+	// data conversion 
+	float temperature = ( ( ( data[0] * 256 + data[1] ) * 175.72 ) / 65536.0 ) - 46.85;
+	char tempstr[320];
+	snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", temperature );
+	retstr = retstr + tempstr + " ";
+    }
+
+    return ( retstr );
+}
+
+// the main program
 int main ( int argc, char** argv )
 {
     bool dht11on = false;
@@ -198,47 +265,6 @@ int main ( int argc, char** argv )
 		abort ();
 	}
     }
-
-    std::string filename = "";
-    std::stringstream astream;
-    /*
-    
-    int aflag = 0;
-  int bflag = 0;
-  char *cvalue = NULL;
-  int index;
-  int c;
-
-  opterr = 0;
-    
-      while ((c = getopt (argc, argv, "abc:")) != -1)
-    switch (c)
-      {
-      case 'w1':
-        w1on = true;
-        break;
-      case 'b':
-        bflag = 1;
-        break;
-      case 'c':
-        cvalue = optarg;
-        break;
-      case '?':
-        if (optopt == 'c')
-          fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-        else if (isprint (optopt))
-          fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-        else
-          fprintf (stderr,
-                   "Unknown option character `\\x%x'.\n",
-                   optopt);
-        return 1;
-      default:
-        abort ();
-      }
-    
-      printf ("aflag = %d, bflag = %d, cvalue = %s\n",
-          aflag, bflag, cvalue);
 
   for (index = optind; index < argc; index++)
     printf ("Non-option argument %s\n", argv[index]);
@@ -294,7 +320,7 @@ int main ( int argc, char** argv )
 
     std::ofstream myfile;
     myfile.open ( filename.c_str ( ), std::ios_base::app );
-    if ( !myfile.is_open( ) )
+    if ( !myfile.is_open ( ) )
     {
 	std::cout << "Error in opening output file!" << std::endl;
 	exit ( 1 );
@@ -350,13 +376,13 @@ int main ( int argc, char** argv )
 	    // devices begin with 10-
 	    if ( dirent->d_type == DT_LNK && strstr( dirent->d_name, "10-" ) != NULL )
 	    { 
-		strcpy( dev[w1count], dirent->d_name );
+		strcpy ( dev[w1count], dirent->d_name );
 		std::cout << "Found w1 device " << w1count << ": " << dev[w1count] << std::endl;
 		w1count++;
 		if ( w1count > 20 )
 		{
 		    std::cout << "Warning! Found more than 20 1-Wire sensors!" << std::endl;
-		    exit( 1 );
+		    exit ( 1 );
 		}
 	    }
 	    ( void ) closedir ( dir );
@@ -376,6 +402,7 @@ int main ( int argc, char** argv )
 	std::string thetime = gettime ( );
 	std::string mydht11 = "";
 	std::string myw1 = "";
+	std::string mysht11 = "";
 
 	if ( dht11on == true )
 	{
@@ -390,8 +417,14 @@ int main ( int argc, char** argv )
 	    myw1 = read_w1 ( );
 	}
 
+	if ( sht11on == true )
+	{
+	    mysht11 = read_sht11 ( );
+	}
+
 	std::size_t found_dht11 = mydht11.find ( "X" );
 	std::size_t found_w1 = myw1.find ( "X" );
+	std::size_t found_sht11 = mysht11.find ( "X" );
 	if ( found_dht11 != std::string::npos )
 	{
 	    delayrate++;
@@ -402,10 +435,15 @@ int main ( int argc, char** argv )
 	    delayrate++;
 	    std::cout << "Failed to read a w1 device, retrying in " << delayrate << " s..." << std::endl;
 	}
+	else if ( found_sht11 != std::string::npos )
+	{
+	    delayrate++;
+	    std::cout << "Failed to read a SHT11 device, retrying in " << delayrate << " s..." << std::endl;
+	}
 	else
 	{
-	    std::cout << thetime << " " << mydht11 << myw1 << std::endl;
-	    myfile << thetime << " " << mydht11 << myw1 << "\n";
+	    std::cout << thetime << " " << mydht11 << myw1 << mysht11 << std::endl;
+	    myfile << thetime << " " << mydht11 << myw1 << mysht11 << "\n";
 	    myfile.flush ( );
 	    delayrate = 1;
 	}

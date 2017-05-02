@@ -74,7 +74,7 @@ while True:
 				break
 			elif not measurement.is_valid:
 				print("Got invalid measurement from %s." % sensor.get_sensor_name(), file=stderr)
-				sleep(RETRY_INTERVAL)
+				#sleep(RETRY_INTERVAL)
 			else:
 				measurements.append(measurement)
 				break

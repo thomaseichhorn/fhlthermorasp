@@ -189,7 +189,6 @@ class DHT11:
 		return ["temp", "hum"]
 
 def get_sensors(*pins):
-	print("Load DHT11 at pins %s" % str(pins))
 	return [DHT11(pin) for pin in pins]
 
 if __name__ == "__main__":

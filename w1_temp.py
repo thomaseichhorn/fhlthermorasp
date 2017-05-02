@@ -54,7 +54,7 @@ class W1TempSensor():
 		if not match:
 			return False
 		else:
-			return W1Result(self.get_sensor_name(), int(match.group(3)) / 1000, match.group(2) == "YES")
+			return W1Result(self.get_sensor_name(), match.group(2) == "YES", int(match.group(3)) / 1000)
 
 	def get_sensor_name(self):
 		return "W1_%s" % self._active_sensor

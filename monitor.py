@@ -9,7 +9,7 @@ import importlib
 
 INTERVAL = 10
 RETRY_INTERVAL = 10
-SENSORS = {"w1_temp": [], "dht11": [17], "dht11": [18], "dht11": [27]}
+SENSORS = {"w1_temp": [], "dht11": [17, 18, 27]}
 
 def get_timestamp():
 	return datetime.datetime.now().isoformat(' ')
@@ -28,15 +28,18 @@ def save_measurements(directory, sensor_fields, *measurements):
 	cur_path_tmp = join(directory, "temp_tmp.txt")
 	hist_path = join(directory, "temp_history.txt")
 	
-	measure_dict = dict()
+	measurements_by_sensor = dict()
 	measure_str = ""
 	for measurement in measurements:
-		measure_dict[measurement.sensor_name] = measurement
-	print(measure_dict)
-	for name, fields in sensor_fields:
-		for field in fields:
-			measure_str += " %.2f" % (getattr(measure_dict[name], field),)
+		measurements_by_sensor[measurement.sensor_name] = measurement
+	for name, field in sensor_fields:
+		if not name in measurements_by_sensor:
+			print("No measurement by %s (%s)" % (name, field))
+			measure_str += " "
+		else:
+			measure_str += " %.2f" % (getattr(measurements_by_sensor[name], field),)
 	
+	print(measure_str)
 	with open(cur_path_tmp, "w") as f:
 		f.write(measure_str + "\n")
 	rename(cur_path_tmp, cur_path)

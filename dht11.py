@@ -69,7 +69,7 @@ class DHT11:
 			return DHT11Result(False, self.get_sensor_name(), 0, 0)
 
 		# ok, we have valid data, return it
-		return DHT11Result(True, self.get_sensor_name(), the_bytes[2], the_bytes[0])
+		return DHT11Result(self.get_sensor_name(), True, the_bytes[2], the_bytes[0])
 
 	def __send_and_sleep(self, output, sleep):
 		RPi.GPIO.output(self.__pin, output)
@@ -188,8 +188,9 @@ class DHT11:
 	def get_sensor_fields(self):
 		return ["temp", "hum"]
 
-def get_sensors(pin):
-	return [DHT11(pin)]
+def get_sensors(*pins):
+	print("Load DHT11 at pins %s" % str(pins))
+	return [DHT11(pin) for pin in pins]
 
 if __name__ == "__main__":
 	sensor = DHT11(pin = 17)

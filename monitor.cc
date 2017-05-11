@@ -31,6 +31,9 @@ char path[] = "/sys/bus/w1/devices";
 // found devices
 int w1count = 0;
 
+// write individual sensor output for mrtg
+bool mrtgoutput = false;
+
 // returns the current time in a formatted string
 std::string gettime ( )
 {
@@ -105,7 +108,7 @@ std::string read_dht11 ( int DHTPIN )
     }
     else
     {
-	//std::cout << " Fail! Output is " << dht11_dat[0] << " " << dht11_dat[1]<< " " << dht11_dat[2]<< " " << dht11_dat[3] << " !" << std::endl;
+	//std::cout << " Fail for DHT11 pin " << DHTPIN << "! Output is " << dht11_dat[0] << " " << dht11_dat[1]<< " " << dht11_dat[2]<< " " << dht11_dat[3] << " !" << std::endl;
 	return ( "X" );
     }
 }
@@ -223,6 +226,7 @@ int main ( int argc, char** argv )
     std::string filename = "";
     std::stringstream astream;
 
+    /*
     char *mypath = NULL;
     char *dht11opts = NULL;
     int index;
@@ -230,7 +234,7 @@ int main ( int argc, char** argv )
     opterr = 0;
     
     
-    /*
+    
     while ( ( c = getopt ( argc, argv, "abc:" ) ) != -1 )
     {
 	switch ( c )

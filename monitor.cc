@@ -34,6 +34,23 @@ int w1count = 0;
 // write individual sensor output for mrtg
 bool mrtgoutput = false;
 
+// global sensor count
+int globalcount = 1;
+
+// writes to mrtg files
+void mrtg_write ( std::string inputstring )
+{
+    std::string filename;
+    std::stringstream ss;
+    ss << globalcount;
+    std::string str = ss.str ( );
+    filename = "/var/www/scripts/sensoroutput/" + str + ".txt";
+    std::ofstream outfile ( filename.c_str ( ) );
+    outfile << inputstring << std::endl;
+    outfile.close ( );
+    globalcount++;
+}
+
 // returns the current time in a formatted string
 std::string gettime ( )
 {
@@ -104,6 +121,7 @@ std::string read_dht11 ( int DHTPIN )
     if ( ( j >= 40 ) && ( dht11_dat[4] == ( ( dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3] ) & 0xFF ) ) )
     {
 	snprintf ( retstr, sizeof ( retstr ), "%d.%02d %d.%02d", dht11_dat[0], dht11_dat[1], dht11_dat[2], dht11_dat[3] );
+	mrtg_write( retstr );
 	return ( retstr );
     }
     else
@@ -139,12 +157,13 @@ std::string read_w1 ( )
 	}
 	while ( ( numRead = read ( fd, buf, 256 ) ) > 0 ) 
 	{
-	    strncpy ( tmpData, strstr ( buf, "t=" ) + 2, 5 ); 
+	    strncpy ( tmpData, strstr ( buf, "t=" ) + 2, 6 );
 	    thetemp[i] = strtof ( tmpData, NULL );
 	}
 	close ( fd );
 	char tempstr[320];
 	snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", thetemp[i] / 1000.0 );
+	mrtg_write( tempstr );
 	retstr = retstr + tempstr + " ";
     }
     return ( retstr );
@@ -190,6 +209,7 @@ std::string read_sht11 ( )
 	float humidity = ( ( ( data[0] * 256 + data[1] ) * 125.0 ) / 65536.0 ) - 6;
 	char tempstr[320];
 	snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", humidity );
+	mrtg_write( tempstr );
 	retstr = retstr + tempstr + " ";
     }
 
@@ -210,6 +230,7 @@ std::string read_sht11 ( )
 	float temperature = ( ( ( data[0] * 256 + data[1] ) * 175.72 ) / 65536.0 ) - 46.85;
 	char tempstr[320];
 	snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", temperature );
+	mrtg_write( tempstr );
 	retstr = retstr + tempstr + " ";
     }
 
@@ -453,6 +474,9 @@ int main ( int argc, char** argv )
 	}
 
 	sleep ( delayrate );
+
+	// reset
+	globalcount = 1;
     }
     return ( 0 );
 }

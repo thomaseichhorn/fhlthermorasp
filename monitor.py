@@ -11,7 +11,7 @@ from argparse import ArgumentParser
 INTERVAL = 10
 RETRY_INTERVAL = 10
 #SENSORS = {"w1_temp": [], "dht11": [17, 18, 27]}
-SENSORS = {"w1_temp": [], "sht21": [3, 2]}
+SENSORS = {"w1_temp": [], "sht21": [3, 2], "dht11": [17, 18]}
 
 def get_timestamp():
 	return datetime.datetime.now().isoformat(' ')

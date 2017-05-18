@@ -194,4 +194,4 @@ def get_sensors(*pins):
 if __name__ == "__main__":
 	sensor = DHT11(pin = 17)
 	result = sensor.read()
-	print("valid:%r temperature:%i huminidty:%i" % (result.is_valid, result.temp, result.hum))
+	print("valid:%r temperature:%i humidity:%i" % (result.is_valid, result.temp, result.hum))

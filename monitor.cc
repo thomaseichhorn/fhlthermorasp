@@ -127,6 +127,7 @@ std::string read_dht11 ( int DHTPIN )
     else
     {
 	//std::cout << " Fail for DHT11 pin " << DHTPIN << "! Output is " << dht11_dat[0] << " " << dht11_dat[1]<< " " << dht11_dat[2]<< " " << dht11_dat[3] << " !" << std::endl;
+	globalcount++;
 	return ( "X" );
     }
 }
@@ -153,6 +154,7 @@ std::string read_w1 ( )
 	if ( fd == -1 )
 	{
 	    // read error
+	    globalcount++;
 	    return ( "X" );
 	}
 	while ( ( numRead = read ( fd, buf, 256 ) ) > 0 ) 
@@ -180,6 +182,7 @@ std::string read_sht11 ( )
     if ( ( file = open ( bus, O_RDWR ) ) < 0 ) 
     {
 	//std::cout << "Fail! Could not open I2C-Bus!" << std::endl;
+	globalcount++;
 	return ( "X" );
     }
 
@@ -201,6 +204,7 @@ std::string read_sht11 ( )
     if ( read ( file, data, 2 ) != 2 )
     {
 	//std::cout << "Fail! Error in reading SHT11 humidity!" << std::endl;
+	globalcount++;
 	return ( "X" );
     }
     else
@@ -209,7 +213,6 @@ std::string read_sht11 ( )
 	float humidity = ( ( ( data[0] * 256 + data[1] ) * 125.0 ) / 65536.0 ) - 6;
 	char tempstr[320];
 	snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", humidity );
-	mrtg_write( tempstr );
 	retstr = retstr + tempstr + " ";
     }
 
@@ -222,6 +225,7 @@ std::string read_sht11 ( )
     if ( read ( file, data, 2 ) != 2 )
     {
 	//std::cout << "Fail! Error in reading SHT11 temperature!" << std::endl;
+	globalcount++;
 	return ( "X" );
     }
     else
@@ -230,10 +234,10 @@ std::string read_sht11 ( )
 	float temperature = ( ( ( data[0] * 256 + data[1] ) * 175.72 ) / 65536.0 ) - 46.85;
 	char tempstr[320];
 	snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", temperature );
-	mrtg_write( tempstr );
 	retstr = retstr + tempstr + " ";
     }
 
+    mrtg_write( retstr );
     return ( retstr );
 }
 
@@ -382,7 +386,7 @@ int main ( int argc, char** argv )
     */
     
     int dhtadd[30] = { 0 };
-    int ndht11 = 3;
+    int ndht11 = 2;
     dhtadd[0] = 0;
     dhtadd[1] = 1;
     dhtadd[2] = 2;

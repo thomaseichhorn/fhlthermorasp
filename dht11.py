@@ -2,29 +2,11 @@ import time
 import RPi
 import RPi.GPIO as GPIO
 from collections import namedtuple
-
-class DHT11Result:
-	'DHT11 sensor result returned by DHT11.read() method'
-
-	ERR_NO_ERROR = 0
-	ERR_MISSING_DATA = 1
-	ERR_CRC = 2
-
-	error_code = ERR_NO_ERROR
-	temperature = -1
-	humidity = -1
-	is_valid = False
-
-	def __init__(self, error_code, sensor_id, temperature, humidity):
-		self.error_code = error_code
-		self.temperature = temperature
-		self.humidity = humidity
-		self.is_valid = self.error_code == DHT11Result.ERR_NO_ERROR
 		
 DHT11Result = namedtuple("DHT11Result", ("sensor_name", "is_valid", "temp", "hum"))
 
 
-class DHT11:
+class DHT11(object):
 	'DHT11 sensor reader class for Raspberry'
 
 	def __init__(self, pin):
@@ -182,11 +164,19 @@ class DHT11:
 	def __calculate_checksum(self, the_bytes):
 		return the_bytes[0] + the_bytes[1] + the_bytes[2] + the_bytes[3] & 255
 		
+	def get_sensor_type_name(self):
+		return "DHT11"
+		
 	def get_sensor_name(self):
 		return "DHT11_PIN%i" % self.__pin
 		
 	def get_sensor_fields(self):
 		return ["temp", "hum"]
+		
+	@staticmethod
+	def detect_sensors():
+		#TODO
+		pass
 
 def get_sensors(*pins):
 	return [DHT11(pin) for pin in pins]
@@ -194,4 +184,4 @@ def get_sensors(*pins):
 if __name__ == "__main__":
 	sensor = DHT11(pin = 17)
 	result = sensor.read()
-	print("valid:%r temperature:%i humidity:%i" % (result.is_valid, result.temp, result.hum))
+	print("valid:%r temperature:%i huminidty:%i" % (result.is_valid, result.temp, result.hum))

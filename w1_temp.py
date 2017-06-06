@@ -11,19 +11,8 @@ SENSOR_PAT = re.compile("((?:[0-9a-f]{2} ){9}): crc=[0-9a-f]{2} (\w+)\n"
 	
 W1Result = namedtuple("W1Result", ("sensor_name", "is_valid", "temp"))
 
-def find_sensors():
-	master_dir = join(W1_DEVICES_DIR, "w1_bus_master1")
 
-	sensors = list()
-	try:
-		with open(join(master_dir, "w1_master_slaves")) as slave_file:
-			for line in slave_file:
-				sensors.append(line[:-1])
-	except FileNotFoundError:
-		pass
-	return sensors
-
-class W1TempSensor():
+class W1TempSensor(object):
 	def __init__(self, active_sensor = None):
 		if active_sensor is None:
 			self.set_active_sensor(find_sensors()[0])
@@ -55,15 +44,31 @@ class W1TempSensor():
 			return False
 		else:
 			return W1Result(self.get_sensor_name(), match.group(2) == "YES", int(match.group(3)) / 1000)
+			
+	def get_sensor_type_name(self):
+		return "W1Temp"
 
 	def get_sensor_name(self):
 		return "W1_%s" % self._active_sensor
 		
 	def get_sensor_fields(self):
 		return ["temp"]
+		
+	@staticmethod
+	def detect_sensors():
+		master_dir = join(W1_DEVICES_DIR, "w1_bus_master1")
+
+		sensors = list()
+		try:
+			with open(join(master_dir, "w1_master_slaves")) as slave_file:
+				for line in slave_file:
+					sensors.append(line[:-1])
+		except FileNotFoundError:
+			pass
+		return [W1TempSensor(name) for name in sensors]
 
 def get_sensors():
-	return [W1TempSensor(name) for name in find_sensors()]
+	return W1TempSensor.detect_sensors()
 
 if __name__ == "__main__":
 	sensor = W1TempSensor()

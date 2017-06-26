@@ -2,20 +2,25 @@ import time
 import RPi
 import RPi.GPIO as GPIO
 from collections import namedtuple
-		
-DHT11Result = namedtuple("DHT11Result", ("sensor_name", "is_valid", "temp", "hum"))
 
+NUM_BCM_PINS = 28 #including BCM0
+
+DHT11Result = namedtuple("DHT11Result", ("sensor_name", "is_valid", "temp", "hum"))
 
 class DHT11(object):
 	'DHT11 sensor reader class for Raspberry'
 
 	def __init__(self, pin):
+		if pin >= NUM_BCM_PINS:
+			raise ValueError("No pin with this BCM number.", pin)
+		#Need reliable way to check if there is a DHT11 on this pin
 		self.__pin = pin
 		GPIO.setwarnings(False)
 		GPIO.setmode(GPIO.BCM)
 		GPIO.cleanup()
 
 	def read(self):
+		GPIO.setmode(GPIO.BCM)
 		RPi.GPIO.setup(self.__pin, RPi.GPIO.OUT)
 
 		# send initial high
@@ -36,7 +41,7 @@ class DHT11(object):
 		# if bit count mismatch, return error (4 byte data + 1 byte checksum)
 		if len(pull_up_lengths) != 40:
 			#return DHT11Result(DHT11Result.ERR_MISSING_DATA, self.get_sensor_name(), 0, 0)
-			return DHT11Result(False, self.get_sensor_name(), 0, 0)
+			return DHT11Result(self.get_sensor_name(), False, 0, 0)
 
 		# calculate bits from lengths of the pull up periods
 		bits = self.__calculate_bits(pull_up_lengths)
@@ -48,7 +53,7 @@ class DHT11(object):
 		checksum = self.__calculate_checksum(the_bytes)
 		if the_bytes[4] != checksum:
 			#return DHT11Result(DHT11Result.ERR_CRC, self.get_sensor_name(), 0, 0)
-			return DHT11Result(False, self.get_sensor_name(), 0, 0)
+			return DHT11Result(self.get_sensor_name(), False, 0, 0)
 
 		# ok, we have valid data, return it
 		return DHT11Result(self.get_sensor_name(), True, the_bytes[2], the_bytes[0])
@@ -173,15 +178,23 @@ class DHT11(object):
 	def get_sensor_fields(self):
 		return ["temp", "hum"]
 		
+	def get_sensor_options(self):
+		return (self.__pin,)
+		
 	@staticmethod
 	def detect_sensors():
-		#TODO
-		pass
+		sensors = list()
+		for i in range(NUM_BCM_PINS):
+			sensor = DHT11(i)
+			res = sensor.read()
+			if res.is_valid:
+				sensors.append(sensor)
+		return sensors
 
 def get_sensors(*pins):
 	return [DHT11(pin) for pin in pins]
 
 if __name__ == "__main__":
-	sensor = DHT11(pin = 17)
+	sensor = DHT11.detect_sensors()[0]
 	result = sensor.read()
 	print("valid:%r temperature:%i huminidty:%i" % (result.is_valid, result.temp, result.hum))

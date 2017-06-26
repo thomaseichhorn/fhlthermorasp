@@ -13,17 +13,14 @@ W1Result = namedtuple("W1Result", ("sensor_name", "is_valid", "temp"))
 
 
 class W1TempSensor(object):
-	def __init__(self, active_sensor = None):
-		if active_sensor is None:
-			self.set_active_sensor(find_sensors()[0])
-		else:
-			self.set_active_sensor(active_sensor)
+	def __init__(self, name):
+		if name[:3] == "W1_":
+			name = name[3:]
+		self._active_sensor = name
 		
-	def set_active_sensor(self, sensor_id):
-		self._active_sensor = sensor_id
-		
-	def get_active_sensor(self):
-		return self._active_sensor
+		sensor_file_path = join(W1_DEVICES_DIR, name, "w1_slave")
+		if not exists(sensor_file_path):
+			raise ValueError("No sensor connected with this ID.", name)
 
 	def read(self):
 		sensor_id = self._active_sensor
@@ -53,6 +50,10 @@ class W1TempSensor(object):
 		
 	def get_sensor_fields(self):
 		return ["temp"]
+		
+	def get_sensor_options(self):
+		return (self._active_sensor,)
+		
 		
 	@staticmethod
 	def detect_sensors():

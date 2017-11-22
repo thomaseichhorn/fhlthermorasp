@@ -386,8 +386,8 @@ int main ( int argc, char** argv )
     */
     
     int dhtadd[30] = { 0 };
-    int ndht11 = 2;
-    dhtadd[0] = 0;
+    int ndht11 = 1;
+    dhtadd[0] = 7;
     dhtadd[1] = 1;
     dhtadd[2] = 2;
     dhtadd[3] = 3;

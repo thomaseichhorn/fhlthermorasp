@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <fstream>
+#include <getopt.h>
 #include <iomanip>
 #include <iostream>
 #include <linux/i2c-dev.h>
@@ -28,7 +29,7 @@ char dev[20][16];
 // w1 path
 char path[] = "/sys/bus/w1/devices";
 
-// found devices
+// found w1 devices
 int w1count = 0;
 
 // write individual sensor output for mrtg
@@ -36,6 +37,24 @@ bool mrtgoutput = false;
 
 // global sensor count
 int globalcount = 1;
+
+// file output
+bool fileoutput = false;
+
+// help message
+static void show_usage ( std::string name )
+{
+    std::cerr << "Usage: " << name << " [-f, --file] <outputfile> [Option(s)]" << std::endl;
+    std::cerr << "\t-f, --file\t\tThe output file to write to." << std::endl;
+    std::cerr << "\t\t\t\tIf no file is selected, messages are sent to stdout." << std::endl;
+    std::cerr << "Options:" << std::endl;
+    std::cerr << "\t-h, --help\t\tShow this help message" << std::endl;
+    std::cerr << "\t-d, --dht11\t\tUse a DHT11 t/h sensor" << std::endl;
+    std::cerr << "\t-w, --w1\t\tUse w1 t sensor(s)" << std::endl;
+    std::cerr << "\t-s, --sht11\t\tUse a SHT11 t/h sensor" << std::endl;
+    std::cerr << "\t-b, --bme280\t\tUse a BME-280 t/h/p sensor" << std::endl;
+    std::cerr << "If no sensors are selected, all variants are probed!" << std::endl;
+}
 
 // writes to mrtg files
 void mrtg_write ( std::string inputstring )
@@ -61,6 +80,226 @@ std::string gettime ( )
     char timebuffer [90];
     strftime ( timebuffer, 80, "%Y-%m-%d %H:%M:%S", timeinfo );
     return ( timebuffer );
+}
+
+// read a bme280
+std::string read_bme ( )
+{
+    // return string
+    std::string retstr = "";
+
+    // i2c bus
+    const char *bus = "/dev/i2c-1";
+
+    // raw calibration data
+    char data[24] = { 0 };
+
+    // temperature calibration coeff.
+    int T[3] = { 0 };
+
+    // pressure calibration coeff.
+    int P[9] = { 0 };
+
+    // humidity calibration coeff.
+    int H[6] = { 0 };
+
+    // the device
+    int device = 0;
+
+    // the register
+    char reg[1] = { 0 };
+
+    if ( ( device = open ( bus, O_RDWR ) ) < 0 )
+    {
+	std::cout << " BME-280 : Could not open I2C-Bus!" << std::endl;
+	globalcount++;
+	return ( "X" );
+    }
+
+    // get I2C device
+    ioctl ( device, I2C_SLAVE, 0x77 );
+
+    // get status
+    reg[0] = 0xF3;
+    write ( device, reg, 1 );
+    if ( read ( device, data, 1 ) != 1 )
+    {
+	std::cout << " BME-280 : Unable to read device status!" << std::endl;
+	globalcount++;
+	return ( "X" );
+    }
+    char * start = &data[0];
+    int total = 0;
+    while ( * start )
+    {
+	total *= 2;
+	if (*start++ == '1') total += 1;
+    }
+    // std::cout << total << std::endl;
+
+    // read 24 bytes of calibration data from address(0x88)
+    reg[0] = 0x88;
+    write ( device, reg, 1 );
+    if ( read ( device, data, 24 ) != 24 )
+    {
+	std::cout << " BME-280 : Unable to read temperature and pressure calibration data!" << std::endl;
+	globalcount++;
+	return ( "X" );
+    }
+
+    // temp coefficents
+    T[0] = data[1] * 256 + data[0];
+    T[1] = data[3] * 256 + data[2];
+    if ( T[1] > 32767 )
+    {
+	T[1] -= 65536;
+    }
+    T[2] = data[5] * 256 + data[4];
+    if ( T[2] > 32767 )
+    {
+	T[2] -= 65536;
+    }
+
+    // pressure coefficents
+    P[0] = data[7] * 256 + data[6];
+    for ( int i = 0; i < 8; i++ )
+    {
+	P[i + 1] = data[2 * i + 9] * 256 + data[2 * i + 8];
+	if ( P[i + 1] > 32767 )
+	{
+	    P[i + 1] -= 65536;
+	}
+    }
+
+    // humidity coefficents, part 1
+    reg[0] = 0xA1;
+    write ( device, reg, 1 );
+    if ( read ( device, data, 1 ) != 1 )
+    {
+	std::cout << " BME-280 : Unable to read humidity calibration data, part 1!" << std::endl;
+	globalcount++;
+	return ( "X" );
+    }
+    H[0] = data[0];
+
+    // part 2
+    reg[0] = 0xE1;
+    write ( device, reg, 1);
+    if ( read ( device, data, 7 ) != 7 )
+    {
+	std::cout << " BME-280 : Unable to read humidity calibration data, part 2!" << std::endl;
+	globalcount++;
+	return ( "X" );
+    }
+    H[1] = data[1] * 256 + data[0];
+    if ( H[1] > 32767 )
+    {
+	H[1] -= 65536;
+    }
+    H[2] = data[2] & 0xFF;
+    H[3] = ( data[3] * 16 + ( data[4] * 0xF ) );
+    if ( H[3] > 32767 )
+    {
+	H[3] -= 65536;
+    }
+    H[4] = ( data[4] / 16 ) + ( data[5] * 16 );
+    if ( H[4] > 32767 )
+    {
+	H[4] -= 65536;
+    }
+    H[5] = data[6];
+    if ( H[5] > 32767 )
+    {
+	H[5] -= 65536;
+    }
+
+    char config[2] = {0};
+    // select control humidity register 0xF2
+    // humidity oversampliung rate = 1 ( 0x01 )
+    config[0] = 0xF2;
+    config[1] = 0x01;
+    write ( device, config, 2 );
+
+    // select control measurement register 0xF4
+    // normal mode, temp and pressure oversampling rate = 1 ( 0x27 )
+    config[0] = 0xF4;
+    config[1] = 0x27;
+    write ( device, config, 2 );
+
+    // select config register 0xF5
+    // stand-by time = 1000 ms = 0xA0
+    config[0] = 0xF5;
+    config[1] = 0xA0;
+    write ( device, config, 2 );
+    sleep ( 1 );
+
+    // read 8 bytes of data from register 0xF7
+    // pressure msb1, pressure msb, pressure lsb, temperature msb1, temperature msb, temperature lsb, humidity lsb, humidity msb
+    reg[0] = 0xF7;
+    write ( device, reg, 1 );
+    if ( read ( device, data, 8 ) != 8 )
+    {
+	std::cout << " BME-280 : Unable to read measurement data!" << std::endl;
+	globalcount++;
+	return ( "X" );
+    }
+
+    // onvert pressure, temperature and humidity data to 19-bits
+    long pres_read = ( ( long ) ( data[0] * 65536 + ( ( long ) ( data[1] * 256 ) + ( long ) ( data[2] & 0xF0 ) ) ) ) / 16;
+    long temp_read = ( ( long ) ( data[3] * 65536 + ( ( long ) ( data[4] * 256 ) + ( long ) ( data[5] & 0xF0 ) ) ) ) / 16;
+    long humi_read = ( long ) ( data[6] * 256 + data[7] );
+
+    // temperature offset calculations
+    double temp1 = ( ( ( double ) temp_read ) / 16384.0 - ( ( double ) T[0] ) / 1024.0 ) * ( ( double ) T[1]);
+    double temp2 = ( ( ( ( double ) temp_read ) / 131072.0 - ( ( double ) T[0] ) / 8192.0 ) * ( ( ( double ) temp_read ) / 131072.0 - ( ( double ) T[0] ) / 8192.0 ) ) * ( ( double ) T[2] );
+    double temp3 = temp1 + temp2;
+    double temperature = temp3 / 5120.0;
+
+    // pressure offset calculations
+    double pres1 = ( temp3 / 2.0 ) - 64000.0;
+    double pres2 = pres1 * pres1 * ( ( double ) P[5] ) / 32768.0;
+    pres2 = pres2 + pres1 * ( ( double ) P[4] ) * 2.0;
+    pres2 = ( pres2 / 4.0 ) + ( ( ( double ) P[3] ) * 65536.0 );
+    pres1 = ( ( ( double ) P[2] ) * pres1 * pres1 / 524288.0 + ( ( double ) P[1] ) * pres1 ) / 524288.0;
+    pres1 = ( 1.0 + pres1 / 32768.0 ) * ( ( double ) P[0] );
+    double pres3 = 1048576.0 - ( double ) pres_read;
+    // don't divide by 0
+    double pressure = 0.0;
+    if ( pres1 != 0.0 )
+    {
+	pres3 = ( pres3 - ( pres2 / 4096.0 ) ) * 6250.0 / pres1;
+	pres1 = ( ( double ) P[8] ) * pres3 * pres3 / 2147483648.0;
+	pres2 = pres3 * ( ( double ) P[7] ) / 32768.0;
+	pressure = ( pres3 + ( pres1 + pres2 + ( ( double ) P[6] ) ) / 16.0 ) / 100.0;
+    }
+
+    // humidity offset calculations
+    double humi1 = temp3 - 76800.0;
+    humi1 = ( humi_read - ( H[3] * 64.0 + H[4] / 16384.0 * humi1 ) ) * (H[1] / 65536.0 * ( 1.0 + H[5] / 67108864.0 * humi1 * ( 1.0 + H[2] / 67108864.0 * humi1 ) ) );
+    double humidity = humi1 * ( 1.0 -  H[0] * humi1 / 524288.0 );
+    if ( humidity > 100.0 )
+    {
+	humidity = 100.0;
+    }
+    else if ( humidity < 0.0 )
+    {
+	humidity = 0.0;
+    }
+
+    // calculate pressure at sea level from barometric formula
+    // double alt = 100.0;
+    // double pressure_nn = pressure * pow ( 1 - ( -0.0065 * alt ) / ( temperature + 273.16 ), 5.255 );
+    // std::cout << "BME-280: Pressure: " << pressure << " hPa, pressure at sea level: " << pressure_nn << " hPa, humidity: " << humidity << " %, temperature: " << temperature << " degrees" << std::endl;
+
+    char tempstr[320];
+    snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", pressure );
+    retstr = retstr + tempstr + " ";
+    snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", humidity );
+    retstr = retstr + tempstr + " ";
+    snprintf ( tempstr, sizeof ( tempstr ), "%4.2f", temperature );
+    retstr = retstr + tempstr;
+
+    return ( retstr );
 }
 
 // read a dht11
@@ -126,7 +365,7 @@ std::string read_dht11 ( int DHTPIN )
     }
     else
     {
-	//std::cout << " Fail for DHT11 pin " << DHTPIN << "! Output is " << dht11_dat[0] << " " << dht11_dat[1]<< " " << dht11_dat[2]<< " " << dht11_dat[3] << " !" << std::endl;
+	std::cout << " DHT11(" << DHTPIN << "): Read error! Output is " << dht11_dat[0] << " " << dht11_dat[1]<< " " << dht11_dat[2]<< " " << dht11_dat[3] << " !" << std::endl;
 	globalcount++;
 	return ( "X" );
     }
@@ -137,7 +376,7 @@ std::string read_w1 ( )
 {
     double thetemp[20] = { 0.0 };
     std::string retstr = "";
-    for ( int i=0; i<w1count; i++ )
+    for ( int i = 0; i < w1count; i++ )
     {
 	// path to device
 	char devPath[128];
@@ -155,6 +394,7 @@ std::string read_w1 ( )
 	{
 	    // read error
 	    globalcount++;
+	    std::cout << " w1(" << i << ")   : Read error!" << std::endl;
 	    return ( "X" );
 	}
 	while ( ( numRead = read ( fd, buf, 256 ) ) > 0 ) 
@@ -181,7 +421,7 @@ std::string read_sht11 ( )
     const char *bus = "/dev/i2c-1";
     if ( ( file = open ( bus, O_RDWR ) ) < 0 ) 
     {
-	//std::cout << "Fail! Could not open I2C-Bus!" << std::endl;
+	std::cout << " SHT11   : Read error! Could not open I2C-Bus!" << std::endl;
 	globalcount++;
 	return ( "X" );
     }
@@ -203,7 +443,7 @@ std::string read_sht11 ( )
     // read 2 bytes of humidity data: humidity msb, humidity lsb
     if ( read ( file, data, 2 ) != 2 )
     {
-	//std::cout << "Fail! Error in reading SHT11 humidity!" << std::endl;
+	std::cout << " SHT11   : Error in reading SHT11 humidity!" << std::endl;
 	globalcount++;
 	return ( "X" );
     }
@@ -224,7 +464,7 @@ std::string read_sht11 ( )
     // read 2 bytes of temperature data: temperature msb, temperature lsb
     if ( read ( file, data, 2 ) != 2 )
     {
-	//std::cout << "Fail! Error in reading SHT11 temperature!" << std::endl;
+	std::cout << " SHT11   : Error in reading SHT11 temperature!" << std::endl;
 	globalcount++;
 	return ( "X" );
     }
@@ -247,112 +487,104 @@ int main ( int argc, char** argv )
     bool dht11on = false;
     bool w1on = false;
     bool sht11on = false;
+    bool bmeon = false;
 
     std::string filename = "";
-    std::stringstream astream;
 
-    /*
-    char *mypath = NULL;
-    char *dht11opts = NULL;
-    int index;
-    int c;
-    opterr = 0;
-    
-    
-    
-    while ( ( c = getopt ( argc, argv, "abc:" ) ) != -1 )
+    if ( argc > 1 )
     {
-	switch ( c )
+	for ( int i = 1; i < argc; i++ )
 	{
-	    case 'w1':
-		w1on = true;
-		std::cout << "W1 on!" << std::endl;
-		break;
-	    case 'dht11':
+	    std::stringstream astream;
+	    astream << argv[i];
+	    if ( astream.str ( ) == "-h" || astream.str ( ) == "--help" )
+	    {
+		show_usage ( argv[0] );
+		exit ( 0 );
+	    }
+	    else if ( astream.str ( ) == "-d" || astream.str ( ) == "--dht11" )
+	    {
 		dht11on = true;
-		std::cout << "DHT11 on!" << std::endl;
-		dht11opts = optarg;
-		break;
-	    case 'f':
-		mypath = optarg;
-		break;
-	    case '?':
-		if ( optopt == 'f' )
+		std::cout << "DHT11 is ON!" << std::endl;
+	    }
+	    else if ( astream.str ( ) == "-w" || astream.str ( ) == "--w1" )
+	    {
+		w1on = true;
+		std::cout << "w1 is ON!" << std::endl;
+	    }
+	    else if ( astream.str ( ) == "-s" || astream.str ( ) == "--sht11" )
+	    {
+		sht11on = true;
+		std::cout << "SHT11 is ON!" << std::endl;
+	    }
+	    else if ( astream.str ( ) == "-b" || astream.str ( ) == "--bme280" )
+	    {
+		bmeon = true;
+		std::cout << "BME280 is ON!" << std::endl;
+	    }
+	    else if ( astream.str ( ) == "-f" || astream.str ( ) == "--file" )
+	    {
+		if ( ( i + 1 ) < argc )
 		{
-		    fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-		}
-		else if ( isprint ( optopt ) )
-		{
-		    fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+		    astream.str ( std::string ( ) );
+		    astream << argv[i + 1];
+		    fileoutput = true;
+		    filename = astream.str ( );
+		    std::cout << "Writing to file " << filename << "..." << std::endl;
 		}
 		else
 		{
-		    fprintf (stderr,"Unknown option character `\\x%x'.\n",              optopt);
+		    std::cerr << "Flag \"-f | --file\" invoked, but no file name specified!" << std::endl;
+		    std::cerr << std::endl;
+		    show_usage ( argv[0] );
+		    exit ( -1 );
 		}
-		return 1;
-	    default:
-		abort ();
-	}
-    }
-
-  for (index = optind; index < argc; index++)
-    printf ("Non-option argument %s\n", argv[index]);
-    
-    */
-    
-    
-    if ( argc>1 )
-    {
-	astream << argv[1];
-	filename = astream.str ( );
-
-	if ( argc>2 )
-	{
-	    for ( int i=2; i<argc; i++ )
-	    {
-		std::stringstream bstream;
-		bstream << argv[i];
-		if ( bstream.str ( ) == "dht11" )
-		{
-		    dht11on = true;
-		    std::cout << "DHT11 is ON!" << std::endl;
-		}
-		if ( bstream.str ( ) == "w1" )
-		{
-		    w1on = true;
-		    std::cout << "w1 is ON!" << std::endl;
-		}
-		if ( bstream.str ( ) == "sht11" )
-		{
-		    sht11on = true;
-		    std::cout << "SHT11 is ON!" << std::endl;
-		}
+		i++;
 	    }
+	    else
+	    {
+		std::cerr << "Unknown option \"" << astream.str ( ) << "\"" << std::endl;
+		show_usage ( argv[0] );
+		exit ( -1 );
+	    }
+
 	}
-	else
+
+	// catch no sensors selected
+	if ( !dht11on && !w1on && !sht11on && !bmeon)
 	{
-	    std::cout << "No sensors specified, assuming all types..." << std::endl;
+	    std::cout << "No sensors selected, probing all!" << std::endl;
 	    dht11on = true;
 	    w1on = true;
 	    sht11on = true;
+	    bmeon = true;
 	}
 
-	std::cout << "Writing to file " << filename << "..." << std::endl;
 	std::cout << "Hit control + c to quit!" << std::endl;
-	filename = argv[1];
+	std::cout << std::endl;
     }
     else
     {
-	std::cout << "You did not enter a file name for output!" << std::endl;
-	exit ( 1 );
+	std::cout << "No arguments given, writing to stdout!" << std::endl;
+	std::cout << "No sensors specified, assuming all types..." << std::endl;
+	std::cout << "Run " << argv[0] << " --help  to show help!" << std::endl;
+	std::cout << std::endl;
+	dht11on = true;
+	w1on = true;
+	sht11on = true;
+	bmeon = true;
+	fileoutput = false;
     }
 
     std::ofstream myfile;
-    myfile.open ( filename.c_str ( ), std::ios_base::app );
-    if ( !myfile.is_open ( ) )
+    if ( fileoutput == true )
     {
-	std::cout << "Error in opening output file!" << std::endl;
-	exit ( 1 );
+	myfile.open ( filename.c_str ( ), std::ios_base::app );
+	if ( !myfile.is_open ( ) )
+	{
+	    std::cout << "Error in opening output file!" << std::endl;
+	    exit ( 1 );
+	}
     }
 
     // check if wiringPi loaded - needed for dht11
@@ -424,7 +656,7 @@ int main ( int argc, char** argv )
     }
 
     // delay in s
-    int delayrate = 1;
+    int delayrate = 2;
 
     while ( 1 )
     {
@@ -432,6 +664,7 @@ int main ( int argc, char** argv )
 	std::string mydht11 = "";
 	std::string myw1 = "";
 	std::string mysht11 = "";
+	std::string mybme = "";
 
 	if ( dht11on == true )
 	{
@@ -451,29 +684,55 @@ int main ( int argc, char** argv )
 	    mysht11 = read_sht11 ( );
 	}
 
+	if ( bmeon == true )
+	{
+	    mybme = read_bme ( );
+	}
+
 	std::size_t found_dht11 = mydht11.find ( "X" );
 	std::size_t found_w1 = myw1.find ( "X" );
 	std::size_t found_sht11 = mysht11.find ( "X" );
+	std::size_t found_bme = mybme.find ( "X" );
 	if ( found_dht11 != std::string::npos )
 	{
-	    delayrate++;
-	    std::cout << "Failed to read a DHT11 device, retrying in " << delayrate << " s..." << std::endl;
+	    if ( delayrate < 5 )
+	    {
+		delayrate++;
+	    }
+	    std::cout << " Failed to read a DHT11 device, retrying in " << delayrate << " s..." << std::endl;
 	}
 	else if ( found_w1 != std::string::npos )
 	{
-	    delayrate++;
-	    std::cout << "Failed to read a w1 device, retrying in " << delayrate << " s..." << std::endl;
+	    if ( delayrate < 5 )
+	    {
+		delayrate++;
+	    }
+	    std::cout << " Failed to read a w1 device, retrying in " << delayrate << " s..." << std::endl;
 	}
 	else if ( found_sht11 != std::string::npos )
 	{
-	    delayrate++;
-	    std::cout << "Failed to read a SHT11 device, retrying in " << delayrate << " s..." << std::endl;
+	    if ( delayrate < 5 )
+	    {
+		delayrate++;
+	    }
+	    std::cout << " Failed to read a SHT11 device, retrying in " << delayrate << " s..." << std::endl;
+	}
+	else if ( found_bme != std::string::npos )
+	{
+	    if ( delayrate < 5 )
+	    {
+		delayrate++;
+	    }
+	    std::cout << " Failed to read a BME device, retrying in " << delayrate << " s..." << std::endl;
 	}
 	else
 	{
-	    std::cout << thetime << " " << mydht11 << myw1 << mysht11 << std::endl;
-	    myfile << thetime << " " << mydht11 << myw1 << mysht11 << "\n";
-	    myfile.flush ( );
+	    std::cout << thetime << " " << mydht11 << myw1 << mysht11 << mybme << std::endl;
+	    if ( fileoutput == true )
+	    {
+		myfile << thetime << " " << mydht11 << myw1 << mysht11 << mybme << "\n";
+		myfile.flush ( );
+	    }
 	    delayrate = 1;
 	}
 

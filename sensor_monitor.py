@@ -150,6 +150,7 @@ class SensorMonitor(object):
 		log_file.close()
 		
 		cur_file = open(self._readings_path, "w")
+		cur_file.write("#{}\n".format(self.get_log_fields()))
 		cur_file.write(reading_line)
 		cur_file.close()
 		

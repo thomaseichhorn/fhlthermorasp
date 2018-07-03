@@ -195,7 +195,7 @@ class BME280(object):
 	@staticmethod
 	def detect_sensors():
 		try:
-			sensors = [BME280(1, 0x76)] #Default bus is 1, default address is 0x76
+			sensors = [BME280(1, 0x77)] #Default bus is 1, default address is 0x77
 		except (ValueError, ):
 			sensors = []
 		#TODO: Not just try the default address

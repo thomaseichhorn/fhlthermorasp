@@ -27,6 +27,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 	s.listen(10)
 	while not finish:
 		conn, addr = s.accept()
+		print("Got connection from %s:%i" % addr)
 		with conn:
 			try:
 				f = open(argv[1], "rb")

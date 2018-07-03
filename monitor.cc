@@ -424,7 +424,7 @@ int main ( int argc, char** argv )
     }
 
     // delay in s
-    int delayrate = 1;
+    int delayrate = 5;
 
     while ( 1 )
     {

@@ -18,6 +18,7 @@ from w1_temp import W1TempSensor
 from sht21 import SHT21
 from dht11 import DHT11
 from bme280 import BME280
+from sht75 import SHT75
 
 def show_warning(parent, message):
 	warnDialog = Gtk.MessageDialog(parent=parent,
@@ -55,6 +56,8 @@ class SensorAddDialog(Gtk.Dialog):
 		"DHT11": (DHT11, [("Pin", SensorOptionTypes.PIN, True)]),
 		"BME280": (BME280, [("I²C bus", SensorOptionTypes.NAT_NUM, True),
 			("I²C address (decimal!)", SensorOptionTypes.NAT_NUM, True)])
+		"SHT75": (SHT75, [("SCL pin", SensorOptionTypes.PIN, True),
+			("SDA pin", SensorOptionTypes.PIN, True)]),
 	}
 	
 	def __init__(self, parent):

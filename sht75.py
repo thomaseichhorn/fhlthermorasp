@@ -270,6 +270,7 @@ class ShtComms(object):
 			self._sck_tick(1)
 			self._sck_tick(0)
 
+SHT75Result = namedtuple("SHT75Result", ("sensor_name", "is_valid", "temp", "hum", "dew"))
 
 class Sht(ShtComms):
 	# All table/chapter refs here point to:
@@ -381,4 +382,8 @@ def main(args=None):
 		if v is not None: p(name, v)
 
 
-if __name__ == '__main__': sys.exit(main())
+if __name__ == "__main__":
+	sht75 = SHT75(21, 20)
+	rest = sht75.read_t()
+	resh = sht75.read_rh()
+	print("is_valid:%r temperature:%i huminidty:%i" % (res.is_valid, rest, resh))

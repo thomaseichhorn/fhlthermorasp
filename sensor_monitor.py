@@ -9,6 +9,7 @@ from w1_temp import W1TempSensor
 from sht21 import SHT21
 from dht11 import DHT11
 from bme280 import BME280
+from sht75 import SHT75
 
 class SensorMonitor(object):
 	KNOWN_SENSORS = {
@@ -16,6 +17,7 @@ class SensorMonitor(object):
 		"SHT21": [SHT21],
 		"DHT11": [DHT11],
 		"BME280": [BME280]
+		"SHT75": [SHT75]
 	}
 	
 	def __init__(self, sensors = list(), readings_path = None,
@@ -292,6 +294,7 @@ if __name__ == "__main__":
 	parser.add_argument("--dht11", action="store_true", help="Enable DHT11 sensors and try to auto-detect them.")
 	parser.add_argument("--sht21", action="store_true", help="Enable SHT21 sensors and try to auto-detect them.")
 	parser.add_argument("--bme280", action="store_true", help="Enable BME280 sensors and try to auto-detect them.")
+	parser.add_argument("--sht75", action="store_true", help="Enable SHT75 sensors and try to auto-detect them.")
 	args = parser.parse_args()
 	
 	sensors = list()
@@ -303,6 +306,8 @@ if __name__ == "__main__":
 		sensors.append(("SHT21", None))
 	if args.bme280:
 		sensors.append(("BME280", None))
+	if args.sht75:
+		sensors.append(("SHT75", None))
 		
 	if not args.dir is None:
 		readings_path = join(args.dir, "readings.txt")

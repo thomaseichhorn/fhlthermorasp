@@ -270,9 +270,9 @@ class ShtComms(object):
 			self._sck_tick(1)
 			self._sck_tick(0)
 
-SHT75Result = namedtuple("SHT75Result", ("sensor_name", "is_valid", "temp", "hum", "dew"))
+SHT75Result = namedtuple("SHT75Result", ("sensor_name", "is_valid", "temp", "hum"))
 
-class Sht(ShtComms):
+class SHT75(ShtComms):
 	# All table/chapter refs here point to:
 	#  Sensirion_Humidity_and_Temperature_Sensors_SHT7x_Datasheet_V5.pdf
 
@@ -302,7 +302,22 @@ class Sht(ShtComms):
 				sure all coefficients match your sensor's datasheet.'''
 		self.voltage = voltage or self.voltage_default
 		assert self.voltage in self.c.d1, [self.voltage, self.c.d1.keys()]
-		super(Sht, self).__init__(pin_sck, pin_data, **sht_comms_kws)
+		super(SHT75, self).__init__(pin_sck, pin_data, **sht_comms_kws)
+
+	def get_sensor_name(self):
+		return "SHT75"
+
+	def read(self):
+		t = self.read_t()
+		h = self.read_rh()
+		is_valid = True
+		if t is None:
+			is_valid = False
+			t = 0
+		if h is None:
+			is_valid = False
+			h = 0
+		return SHT75Result(self.get_sensor_name(), is_valid, t, h)
 
 	def read_t(self):
 		t_raw = self._get_meas_result(self.cmd.t)
@@ -327,6 +342,17 @@ class Sht(ShtComms):
 		return ( # ch 4.4
 			tn * (math.log(rh / 100.0) + (m * t) / (tn + t))
 			/ (m - math.log(rh / 100.0) - m * t / (tn + t)) )
+
+	def detect_sensors():
+		try:
+			sensors = [SHT75(21, 20)] #Default bus is 1, default address is 0x40
+		except (ValueError, FileNotFoundError, OSError):
+			sensors = []
+		#TODO: Not just probe the default pins
+		return sensors
+
+	def get_sensor_fields(self):
+		return ["temp", "hum"]
 
 
 def main(args=None):
@@ -369,7 +395,7 @@ def main(args=None):
 		except ValueError as err:
 			parser.error('Invalid frequency "hz[:hz]" spec {!r}: {}'.format(opts.max_freq, err))
 
-	sht = Sht(opts.pin_sck, opts.pin_data, **freq_kws)
+	sht = SHT75(opts.pin_sck, opts.pin_data, **freq_kws)
 
 	p = '{name}: {val}' if opts.verbose else '{val}'
 	p = lambda name, val, fmt=p: print(fmt.format(name=name, val=val))
@@ -383,7 +409,6 @@ def main(args=None):
 
 
 if __name__ == "__main__":
-	sht75 = SHT75(21, 20)
-	rest = sht75.read_t()
-	resh = sht75.read_rh()
-	print("is_valid:%r temperature:%i huminidty:%i" % (res.is_valid, rest, resh))
+	mysht75 = SHT75(21, 20)
+	res = mysht75.read()
+	print("is_valid:%r temperature:%f huminidty:%f" % (res.is_valid, res.temp, res.hum))

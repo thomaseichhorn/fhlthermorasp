@@ -16,7 +16,7 @@ class SensorMonitor(object):
 		"W1Temp": [W1TempSensor],
 		"SHT21": [SHT21],
 		"DHT11": [DHT11],
-		"BME280": [BME280]
+		"BME280": [BME280],
 		"SHT75": [SHT75]
 	}
 	

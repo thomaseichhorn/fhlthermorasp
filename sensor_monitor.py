@@ -156,15 +156,15 @@ class SensorMonitor(object):
 		cur_file.write(reading_line)
 		cur_file.close()
 		
-		if self._mrtg_path != False:
-			i = 1
-			for sensor_name, reading in readings.items():
-				if reading is None:
-					continue
-				mrtg_file = open(join(self._mrtg_path, "%i.txt" % (i,)), "w")
-				values = ["%0.2f" % (val,) for val in reading.values()]
-				mrtg_file.write(" ".join(values))
-				i += 1
+		#if self._mrtg_path != False:
+		#	i = 1
+		#	for sensor_name, reading in readings.items():
+		#		if reading is None:
+		#			continue
+		#		mrtg_file = open(join(self._mrtg_path, "%i.txt" % (i,)), "w")
+		#		values = ["%0.2f" % (val,) for val in reading.values()]
+		#		mrtg_file.write(" ".join(values))
+		#		i += 1
 		
 		return reading_line
 		

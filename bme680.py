@@ -367,14 +367,15 @@ class BME680(BME680Data):
 
 		return int(duration + (factor * 64))
 
-	@staticmethod
-	def detect_sensors():
-		try:
-			sensors = [BME680(1, 0x77)] #Default bus is 1, default address is 0x77
-		except (ValueError, ):
-			sensors = []
-		#TODO: Not just try the default address
-		return sensors
+	def get_sensor_name(self):
+		return "BME680_i2c-%i_0x%02x" % (0, self.i2c_addr)
+
+	def get_sensor_fields(self):
+		return ["temp", "hum", "pres"]
+
+	def read(self):
+		if self.get_sensor_data():
+			return BME680Result(self.get_sensor_name(), True, self.data.temperature, self.data.humidity, self.data.pressure)
 
 
 class myBME680(object):
@@ -406,6 +407,15 @@ class myBME680(object):
 	def get_sensor_options(self):
 		return (self.i2c_bus_number, self.i2c_address)
 
+	@staticmethod
+	def detect_sensors():
+		try:
+			sensors = [BME680()] #Default bus is 1, default address is 0x77
+		except (ValueError, ):
+			sensors = []
+		#TODO: Not just try the default address
+		return sensors
+
 
 if __name__ == "__main__":
 	import argparse
@@ -413,7 +423,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 
 	parser.add_argument('--i2c-bus', default='1')
-	parser.add_argument('--i2c-address', default='0x76')
+	parser.add_argument('--i2c-address', default='0x77')
 	args = parser.parse_args()
 	
 	mydevice = myBME680(int(args.i2c_bus), int(args.i2c_address, 0))

@@ -10,7 +10,7 @@ from sht21 import SHT21
 from dht11 import DHT11
 from bme280 import BME280
 from sht75 import SHT75
-from bme680 import BME680
+from bme680 import myBME680
 
 class SensorMonitor(object):
 	KNOWN_SENSORS = {
@@ -19,7 +19,7 @@ class SensorMonitor(object):
 		"DHT11": [DHT11],
 		"BME280": [BME280],
 		"SHT75": [SHT75],
-		"BME680": [BME680]
+		"BME680": [myBME680]
 	}
 	
 	def __init__(self, sensors = list(), readings_path = None,

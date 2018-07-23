@@ -367,6 +367,15 @@ class BME680(BME680Data):
 
 		return int(duration + (factor * 64))
 
+	@staticmethod
+	def detect_sensors():
+		try:
+			sensors = [BME680(1, 0x77)] #Default bus is 1, default address is 0x77
+		except (ValueError, ):
+			sensors = []
+		#TODO: Not just try the default address
+		return sensors
+
 
 class myBME680(object):
 	def __init__(self, i2c_bus_number, i2c_address):
@@ -397,14 +406,6 @@ class myBME680(object):
 	def get_sensor_options(self):
 		return (self.i2c_bus_number, self.i2c_address)
 
-	@staticmethod
-	def detect_sensors():
-		try:
-			sensors = [BME680(1, 0x77)] #Default bus is 1, default address is 0x77
-		except (ValueError, ):
-			sensors = []
-		#TODO: Not just try the default address
-		return sensors
 
 if __name__ == "__main__":
 	import argparse

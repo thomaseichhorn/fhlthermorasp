@@ -19,7 +19,7 @@ class SensorMonitor(object):
 		"DHT11": [DHT11],
 		"BME280": [BME280],
 		"SHT75": [SHT75],
-		"BME680": [BME280]
+		"BME680": [BME680]
 	}
 	
 	def __init__(self, sensors = list(), readings_path = None,

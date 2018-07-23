@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import smbus
 import bme680
 from os.path import join, exists
 from collections import namedtuple
@@ -16,7 +17,7 @@ class BME680(BME680Data):
 	:param i2c_addr: One of I2C_ADDR_PRIMARY (0x76) or I2C_ADDR_SECONDARY (0x77)
 	:param i2c_device: Optional smbus or compatible instance for facilitating i2c communications.
 	"""
-	def __init__(self, i2c_addr=I2C_ADDR_PRIMARY, i2c_device=None):
+	def __init__(self, i2c_addr=I2C_ADDR_SECONDARY, i2c_device=None):
 		BME680Data.__init__(self)
 
 		self.i2c_addr = i2c_addr
@@ -341,7 +342,7 @@ class BME680(BME680Data):
 		if calc_gas_res < 0:
 			calc_gas_res = (1<<32) + calc_gas_res
 
-	    return calc_gas_res
+		return calc_gas_res
 
 	def _calc_heater_resistance(self, temperature):
 		temperature = min(max(temperature,200),400)
@@ -381,8 +382,8 @@ class myBME680(object):
 		self.sensor.set_gas_status(bme680.ENABLE_GAS_MEAS)
 
 	def read(self):
-		if sensor.get_sensor_data():
-			return BME280Result(self.get_sensor_name(), True, self.sensor.data.temperature, self.sensor.data.humidity, self.sensor.data.pressure)
+		if bme680.BME680().get_sensor_data():
+			return BME680Result(self.get_sensor_name(), True, self.sensor.data.temperature, self.sensor.data.humidity, self.sensor.data.pressure)
 		
 	def get_sensor_type_name(self):
 		return "BME680"
@@ -416,5 +417,5 @@ if __name__ == "__main__":
 	
 	mydevice = myBME680(int(args.i2c_bus), int(args.i2c_address, 0))
 
-	res = mydevice.read()
+	result = mydevice.read()
 	print("is_valid:%r temperature:%.2f huminidty:%.2f pressure:%.2f" % (result.is_valid, result.temp, result.hum, result.pres))

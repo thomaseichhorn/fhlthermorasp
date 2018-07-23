@@ -382,4 +382,4 @@ class BME680Data:
         # Sensor power modes
         self.power_mode = None
         # New sensor fields
-self.new_fields = None
+        self.new_fields = None

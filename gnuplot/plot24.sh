@@ -17,7 +17,7 @@ set xdata time
 set timefmt "%Y-%m-%d %H:%M:%S"
 set format x "%d.%m %H:%M"
 set xrange ["$pastyear-$pastmonth-$pastday $pasthour:00:00":"$yeartoday-$monthtoday-$daytoday $hourtoday:00:00"]
-set yrange [16:27]
+set yrange [16:26]
 set y2range [0.1:100]
 set key font ",20"
 #set log y2

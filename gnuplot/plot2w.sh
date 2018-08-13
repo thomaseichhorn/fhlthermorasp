@@ -6,10 +6,10 @@ monthtoday=$(date +%m)
 daytoday=$(date +%d)
 hourtoday=$(date +%H)
 
-pastyear=$(date --date='1 month ago' +%Y)
-pastmonth=$(date --date='1 month ago' +%m)
-pastday=$(date --date='1 month ago' +%d)
-pasthour=$(date --date='1 month ago' +%H)
+pastyear=$(date --date='2 weeks ago' +%Y)
+pastmonth=$(date --date='2 weeks ago' +%m)
+pastday=$(date --date='2 weeks ago' +%d)
+pasthour=$(date --date='2 weeks ago' +%H)
 
 gnuplot <<-EOFMarker
 set term x11 persist
@@ -31,7 +31,7 @@ set ytics font ",20"
 set y2tics font ",20"
 set mytics 5
 set tics out
-set title "Status of $machine - past month" font ",20"
+set title "Status of $machine - past 2 weeks" font ",20"
 #set autoscale y
 #set autoscale y2
 plot "/opt/measurements/readings_log.txt" using 1:3 title "Temperature" w l lt rgb "red"  lw 3, "/opt/measurements/readings_log.txt" using 1:4 title "% Relative Humidity" w l lt rgb "blue"  lw 3 axes x1y2

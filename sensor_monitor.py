@@ -11,6 +11,7 @@ from dht11 import DHT11
 from bme280 import BME280
 from sht75 import SHT75
 from bme680 import myBME680
+from dust import DustSensor
 
 class SensorMonitor(object):
 	KNOWN_SENSORS = {
@@ -19,7 +20,8 @@ class SensorMonitor(object):
 		"DHT11": [DHT11],
 		"BME280": [BME280],
 		"SHT75": [SHT75],
-		"BME680": [myBME680]
+		"BME680": [myBME680],
+		"DUST": [DustSensor]
 	}
 	
 	def __init__(self, sensors = list(), readings_path = None,
@@ -298,6 +300,7 @@ if __name__ == "__main__":
 	parser.add_argument("--bme280", action="store_true", help="Enable BME280 sensors and try to auto-detect them.")
 	parser.add_argument("--sht75", action="store_true", help="Enable SHT75 sensors and try to auto-detect them.")
 	parser.add_argument("--bme680", action="store_true", help="Enable BME680 sensors and try to auto-detect them.")
+	parser.add_argument("--dust", action="store_true", help="Enable dust sensors and try to auto-detect them.")
 	args = parser.parse_args()
 	
 	sensors = list()
@@ -313,6 +316,8 @@ if __name__ == "__main__":
 		sensors.append(("SHT75", None))
 	if args.bme680:
 		sensors.append(("BME680", None))
+	if args.dust:
+		sensors.append(("DUST", None))
 		
 	if not args.dir is None:
 		readings_path = join(args.dir, "readings.txt")

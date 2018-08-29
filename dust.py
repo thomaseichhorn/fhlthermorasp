@@ -15,8 +15,12 @@ class DustSensor ( object ) :
 			data = ser.readline ( )
 			if data :
 				[small_str, large_str] = data.split ( b',' )
-				smalldst = int ( small_str )
-				largedst = int ( large_str )
+				smalldst = float ( small_str )
+				largedst = float ( large_str )
+				if smalldst < 0.5 :
+					smalldst = float ( 0.00001 )
+				if largedst < 0.5 :
+					largedst = float ( 0.00001 )
 				return DustResult ( self.get_sensor_name ( ), True, smalldst, largedst )
 	
 	def get_sensor_type_name ( self ) :

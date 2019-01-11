@@ -2,7 +2,7 @@
 
 from collections import namedtuple
 import serial
-ser = serial.Serial ( '/dev/ttyUSB0', 9600 )
+#ser = serial.Serial ( '/dev/ttyUSB0', 9600 )
 
 DustResult = namedtuple ( "DustResult", ( "sensor_name", "is_valid", "smalldust", "largedust" ) )
 

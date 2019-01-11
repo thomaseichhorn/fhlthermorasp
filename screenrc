@@ -1,0 +1,38 @@
+# BYOBU is a nice extension but causes problems (due to kerberos tickets expiring?)
+#source $HOME/.byobu/profile
+
+# So just steal some nice options instead
+startup_message off
+vbell off
+msgwait 3
+defutf8 on
+
+# Turns off alternate screen switching in xterms,
+# so that text in screen will go into the xterm's scrollback buffer:
+termcapinfo xterm* ti@:te@
+altscreen on
+
+# Enable 256 color terminal
+attrcolor b ".I"
+termcapinfo xterm 'Co#256:AB=\E[48;5;%dm:AF=\E[38;5;%dm'
+defbce "on"
+
+# Log 100000 lines
+defscrollback 100000
+
+# Monitor windows - bug in *old* screen versions if defmonitor is set to on
+#defmonitor on
+activity "Oi!"
+
+#
+# look and feel for the bottom two lines.
+#
+caption     always        "%{+b rk}%H%{gk} |%c %{yk}%d.%m.%Y | %72=Load: %l %{wk}"
+hardstatus alwayslastline "%?%{yk}%-Lw%?%{wb}%n*%f %t%?(%u)%?%?%{yk}%+Lw%?"
+
+
+# alternatively:
+#hardstatus alwayslastline "%= %3n %t%? [%h]%? %="
+#caption always "%= %-w%L>%{= BW}%n*%t%{-}%52<%+w %L="
+
+escape ^Tt

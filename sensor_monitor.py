@@ -277,6 +277,7 @@ if __name__ == "__main__" :
 	parser.add_argument ( "--alarm-temp", type = float, nargs = 2, help = "If set, alarm will be rang if temperature is not within these two values for alarm_num times." )
 	parser.add_argument ( "--alarm-hum", type = float, nargs = 2, help = "If set, alarm will be rang if humidity is not within these two values for alarm_num times." )
 	parser.add_argument ( "--alarm-pres", type = float, nargs = 2, help = "If set, alarm will be rang if pressure is not within these two values for alarm-num times." )
+	parser.add_argument ( "--alarm-gas", type = float, nargs = 2, help = "If set, alarm will be rang if gas quality is not within these two values for alarm-num times." )
 	parser.add_argument ( "--num-alarm", type = int, help = "The number of times a measurement can be (successive) outside of the limits given by the --alarm-* options. Default: 1" )
 	parser.add_argument ( "--w1", action = "store_true", help = "Enable W1 sensors and try to auto-detect them." )
 	parser.add_argument ( "--dht11", action = "store_true", help = "Enable DHT11 sensors and try to auto-detect them." )
@@ -320,6 +321,8 @@ if __name__ == "__main__" :
 		monitor.set_alarm_limits ( "hum", args.alarm_temp[0], args.alarm_temp[1] )
 	if not args.alarm_pres is None :
 		monitor.set_alarm_limits ( "pres", args.alarm_temp[0], args.alarm_temp[1] )
+	if not args.alarm_gas is None :
+		monitor.set_alarm_limits ( "gas", args.alarm_temp[0], args.alarm_temp[1] )
 
 	if not args.save_config is None :
 		options = monitor.get_options ( )

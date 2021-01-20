@@ -5,7 +5,7 @@ import bme680
 from os.path import join, exists
 from collections import namedtuple
 
-BME680Result = namedtuple("BME680Result", ("sensor_name", "is_valid", "temp", "hum", "pres"))
+BME680Result = namedtuple("BME680Result", ("sensor_name", "is_valid", "temp", "hum", "pres", "gas"))
 
 from constants_bme680 import *
 import math
@@ -17,7 +17,7 @@ class BME680(BME680Data):
 	:param i2c_addr: One of I2C_ADDR_PRIMARY (0x76) or I2C_ADDR_SECONDARY (0x77)
 	:param i2c_device: Optional smbus or compatible instance for facilitating i2c communications.
 	"""
-	def __init__(self, i2c_addr=I2C_ADDR_SECONDARY, i2c_device=None):
+	def __init__(self, i2c_addr=I2C_ADDR_PRIMARY, i2c_device=None):
 		BME680Data.__init__(self)
 
 		self.i2c_addr = i2c_addr
@@ -246,6 +246,7 @@ class BME680(BME680Data):
 			self.data.pressure = self._calc_pressure(adc_pres) / 100.0
 			self.data.humidity = self._calc_humidity(adc_hum) / 1000.0
 			self.data.gas_resistance = self._calc_gas_resistance(adc_gas_res, gas_range)
+			self.data.gas_comp = math.log ( self.data.gas_resistance ) + 0.04 * self.data.humidity
 			return True
 
 		return False
@@ -371,11 +372,11 @@ class BME680(BME680Data):
 		return "BME680_i2c-%i_0x%02x" % (0, self.i2c_addr)
 
 	def get_sensor_fields(self):
-		return ["temp", "hum", "pres"]
+		return ["temp", "hum", "pres", "gas"]
 
 	def read(self):
 		if self.get_sensor_data():
-			return BME680Result(self.get_sensor_name(), True, self.data.temperature, self.data.humidity, self.data.pressure)
+			return BME680Result(self.get_sensor_name(), True, self.data.temperature, self.data.humidity, self.data.pressure, self.data.gas_comp)
 
 
 class myBME680(object):
@@ -393,7 +394,7 @@ class myBME680(object):
 
 	def read(self):
 		if bme680.BME680().get_sensor_data():
-			return BME680Result(self.get_sensor_name(), True, self.sensor.data.temperature, self.sensor.data.humidity, self.sensor.data.pressure)
+			return BME680Result(self.get_sensor_name(), True, self.sensor.data.temperature, self.sensor.data.humidity, self.sensor.data.pressure, self.sensor.data.gas_comp)
 		
 	def get_sensor_type_name(self):
 		return "BME680"
@@ -402,7 +403,7 @@ class myBME680(object):
 		return "BME680_i2c-%i_0x%02x" % (self.i2c_bus_number, self.i2c_address)
 
 	def get_sensor_fields(self):
-		return ["temp", "hum", "pres"]
+		return ["temp", "hum", "pres", "gas"]
 		
 	def get_sensor_options(self):
 		return (self.i2c_bus_number, self.i2c_address)
@@ -429,4 +430,4 @@ if __name__ == "__main__":
 	mydevice = myBME680(int(args.i2c_bus), int(args.i2c_address, 0))
 
 	result = mydevice.read()
-	print("is_valid:%r temperature:%.2f huminidty:%.2f pressure:%.2f" % (result.is_valid, result.temp, result.hum, result.pres))
+	print("is_valid:%r temperature:%.2f huminidty:%.2f pressure:%.2f gas:%.2f" % (result.is_valid, result.temp, result.hum, result.pres, result.gas))

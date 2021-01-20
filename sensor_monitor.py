@@ -91,7 +91,7 @@ class SensorMonitor ( object ) :
 	def get_log_fields ( self ) :
 		return "date time %s" % ( " ".join ( self._log_fields ), )
 
-	def get_readings ( self, check_alarm = True ) :
+	def get_readings ( self, check_alarm = False ) :
 		readings = dict ( )
 		self._should_abort = False
 		for sensor in self._loaded_sensors :
